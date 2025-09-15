@@ -149,9 +149,9 @@ st.divider()
 # ----------------------------
 # Sidebar: aggregation & chart config
 # ----------------------------
-def plot_choropleth_map(data, col):
-   
-    df_state = df.groupby('State').agg({col:'mean'}).reset_index()
+def plot_choropleth_map(df, col, agg):
+
+    df_state = df.groupby('State').agg({col: agg}).reset_index()
 
     # Print state names to check format
     print("States in our data:")
@@ -185,8 +185,8 @@ def plot_choropleth_map(data, col):
         color=col,      # Values to show in color
         scope="usa",               # Focus on USA map
         color_continuous_scale="RdYlBu_r",  # Red for higher values, blue for lower
-        title=f"Average {col} by State ",
-        labels={col: f'Average {col}'},
+        title=f"{aggr} {col} by State ",
+        labels={col: f'{aggr} {col}'},
         hover_data={"State": True, col: ':.1f'},
     )
 
@@ -236,7 +236,7 @@ def plot_choropleth_map(data, col):
     return fig
 
 # Create the map
-def plot_city_map(data, col):
+def plot_city_map(df, col, aggr):
     cities = pd.read_csv("USZipsWithLatLon_20231227.csv", low_memory=False)
     df_map = pd.merge(
         df,
@@ -249,7 +249,7 @@ def plot_city_map(data, col):
     df_map
     df_city = (
         df_map.groupby(["Postal Code", "latitude", "longitude", "City", "State"])[col]
-        .mean()
+        .agg(aggr)
     )
     df_city = df_city.reset_index()
     fig = px.scatter_geo(  # Changed to scatter_geo instead of scatter_map
@@ -262,7 +262,7 @@ def plot_city_map(data, col):
         scope="usa",  # Set scope to USA specifically
         hover_name="Postal Code",
         hover_data={"latitude": False, "longitude": False, "City": True, "State": True, col: ':.1f'},
-        title=f"Average {col} by Location ($)",
+        title=f"{aggr} {col} by Location ($)",
         #color_continuous_scale="RdYlBu_r",
         color_continuous_scale=px.colors.sequential.Viridis,
     )
@@ -291,7 +291,7 @@ st.sidebar.header("3) Aggregate & visualize")
 dim = st.sidebar.selectbox("Group by (dimension)", options=(cat_cols + date_cols) if (cat_cols or date_cols) else [None])
 metric = st.sidebar.selectbox("Metric (numeric)", options=num_cols if num_cols else [None])
 aggr = st.sidebar.selectbox("Aggregation", options=["sum", "mean", "count"])
-chart_type = st.sidebar.selectbox("Chart type", options=["Line", "Bar", "Scatter", "Box", "Area", "Map"])
+chart_type = st.sidebar.selectbox("Chart type", options=["Line", "Bar", "Pie", "Scatter", "Box", "Area", "Map"])
 
 # Compute aggregation
 if dim and metric and not filtered.empty:
@@ -345,6 +345,8 @@ with right:
             fig = px.line(agg_df, x=dim, y=value_col, markers=True)
         elif chart_type == "Bar":
             fig = px.bar(agg_df, x=dim, y=value_col)
+        elif chart_type == "Pie":
+            fig = px.pie(agg_df, names=dim, values=value_col, title=f"{aggr} {metric} by {dim}")
         elif chart_type == "Scatter":
             fig = px.scatter(agg_df, x=dim, y=value_col)
         elif chart_type == "Box":
@@ -357,12 +359,12 @@ with right:
             fig = px.area(agg_df, x=dim, y=value_col)
         elif chart_type == "Map":
             # Map needs country/location column
-            location_col = st.sidebar.selectbox("Location column", options=['State', 'City'])
-            if location_col == 'State':
-                fig = plot_choropleth_map(filtered, metric)
-            elif location_col == 'City':
-                fig = plot_city_map(filtered, metric)
-            elif dim != 'State' or dim != 'City':
+            # location_col = st.sidebar.selectbox("Location column", options=['State', 'City'])
+            if dim == 'State':
+                fig = plot_choropleth_map(filtered, metric, aggr)
+            elif dim == 'City':
+                fig = plot_city_map(filtered, metric, aggr)
+            else:
                 st.warning("Map visualization requires grouping by a country/location column with 'count' aggregation.")
                 fig = px.line(agg_df, x=dim, y=value_col, markers=True) 
         else:

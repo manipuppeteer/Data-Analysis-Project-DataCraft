@@ -1,13 +1,14 @@
-# app.py — Streamlit + Plotly dashboard starter
-# -------------------------------------------------
-# Features
-# - CSV upload (or auto-loads sample dataset if no file)
-# - Smart dtype parsing (dates, categoricals, numerics)
-# - Sidebar filters (date range, categorical multi-selects)
-# - Simple aggregations (sum/mean/count) by a chosen dimension
-# - KPIs, interactive Plotly charts, data preview
-# - Download filtered/aggregated data as CSV
-# -------------------------------------------------
+"""
+Streamlit + Plotly dashboard for interactive data analysis.
+
+Features:
+- CSV upload (or auto-loads sample dataset if no file)
+- Smart dtype parsing (dates, categoricals, numerics)
+- Sidebar filters (date range, categorical multi-selects)
+- Simple aggregations (sum/mean/count) by a chosen dimension
+- KPIs, interactive Plotly charts, data preview
+- Download filtered/aggregated data as CSV
+"""
 
 import io
 from typing import List
@@ -36,30 +37,37 @@ st.caption(
 # Helpers
 # ----------------------------
 
+
 def _try_parse_dates(df: pd.DataFrame) -> pd.DataFrame:
-    """Attempt to parse likely date columns in place."""
+    """
+    Attempt to parse likely date columns in place.
+    Columns with >90% date-like values are converted to datetime.
+    """
     for col in df.columns:
         if df[col].dtype == object:
             sample = df[col].dropna().astype(str).head(50)
             if sample.empty:
                 continue
-            # Heuristic: if vast majority of values look like dates, parse.
-            # To do: add more possible regex patterns for dates
             date_hits = sample.str.contains(r"\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}", regex=True).mean()
             if date_hits > 0.9:
                 df[col] = pd.to_datetime(df[col], format='%d-%m-%Y', errors="ignore")
     return df
 
+
 @st.cache_data(show_spinner=False)
 def load_sample() -> pd.DataFrame:
-    # Plotly's sample: gapminder
+    """
+    Load the Plotly Gapminder sample dataset for demo purposes.
+    """
     df = px.data.gapminder().rename(columns={"year": "Year", "continent": "Continent", "country": "Country"})
-    # Create a pseudo date from Year for demo purposes
-    # df["Date"] = pd.to_datetime(df["Year"].astype(str) + "-01-01")
     return df
+
 
 @st.cache_data(show_spinner=False)
 def load_csv(file: io.BytesIO) -> pd.DataFrame:
+    """
+    Load a CSV file and attempt to parse date columns.
+    """
     df = pd.read_csv(file, encoding='latin1')
     df = _try_parse_dates(df)
     return df
@@ -150,14 +158,20 @@ st.divider()
 # Sidebar: aggregation & chart config
 # ----------------------------
 def plot_choropleth_map(df, col, agg):
+    """
+    Plot a choropleth map of US states for a given column and aggregation.
 
+    Args:
+        df (pd.DataFrame): DataFrame containing a 'State' column.
+        col (str): Column to aggregate and plot.
+        agg (str): Aggregation function ('sum', 'mean', 'count').
+
+    Returns:
+        plotly.graph_objs._figure.Figure: Choropleth map figure.
+    """
     df_state = df.groupby('State').agg({col: agg}).reset_index()
 
-    # Print state names to check format
-    print("States in our data:")
-    print(df_state['State'].sort_values().tolist())
-
-    # Create a dictionary for state abbreviations
+    # US state abbreviations for mapping
     state_abbrev = {
         'Alabama': 'AL', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA',
         'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL',
@@ -174,23 +188,20 @@ def plot_choropleth_map(df, col, agg):
         'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY'
     }
 
-    # Map state names to abbreviations
     df_state['State_Code'] = df_state['State'].map(state_abbrev)
 
-    # Create the choropleth map
     fig = px.choropleth(
         df_state,
-        locations='State_Code',     # Now using state codes
-        locationmode='USA-states',  # Built-in state codes for USA
-        color=col,      # Values to show in color
-        scope="usa",               # Focus on USA map
-        color_continuous_scale="RdYlBu_r",  # Red for higher values, blue for lower
-        title=f"{aggr} {col} by State ",
-        labels={col: f'{aggr} {col}'},
+        locations='State_Code',
+        locationmode='USA-states',
+        color=col,
+        scope="usa",
+        color_continuous_scale="RdYlBu_r",
+        title=f"{agg} {col} by State ",
+        labels={col: f'{agg} {col}'},
         hover_data={"State": True, col: ':.1f'},
     )
 
-    # Update the layout
     fig.update_layout(
         geo=dict(
             showlakes=True,
@@ -199,24 +210,33 @@ def plot_choropleth_map(df, col, agg):
             showsubunits=True,
             subunitcolor="black",
             scope='usa',
-            projection_scale=1.2  # Adjust this value to zoom in/out
+            projection_scale=1.2
         ),
         margin={"r":0,"t":30,"l":0,"b":0},
         height=800,
         width=1200
     )
 
-    
-
-    # Print any states that didn't get mapped (for debugging)
-    unmapped_states = df_state[df_state['State_Code'].isna()]['State'].tolist()
-    if unmapped_states:
-        print("\nStates that couldn't be mapped:")
-        print(unmapped_states)
+    # Optionally print unmapped states for debugging
+    # unmapped_states = df_state[df_state['State_Code'].isna()]['State'].tolist()
+    # if unmapped_states:
+    #     print("\nStates that couldn't be mapped:")
+    #     print(unmapped_states)
     return fig
 
 # Create the map
-def plot_city_map(df, col, aggr):
+def plot_city_map(df, col, agg):
+    """
+    Plot a scatter geo map of US cities for a given column and aggregation.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing a 'Postal Code' column.
+        col (str): Column to aggregate and plot.
+        agg (str): Aggregation function ('sum', 'mean', 'count').
+
+    Returns:
+        plotly.graph_objs._figure.Figure: Scatter geo map figure.
+    """
     cities = pd.read_csv("USZipsWithLatLon_20231227.csv", low_memory=False)
     df_map = pd.merge(
         df,
@@ -226,24 +246,22 @@ def plot_city_map(df, col, aggr):
         how="inner"
     )
 
-    df_map
     df_city = (
         df_map.groupby(["Postal Code", "latitude", "longitude", "City", "State"])[col]
-        .agg(aggr)
+        .agg(agg)
     )
     df_city = df_city.reset_index()
-    fig = px.scatter_geo(  # Changed to scatter_geo instead of scatter_map
+    fig = px.scatter_geo(
         df_city,
         lat="latitude",
         lon="longitude",
         color=col,
         size=abs(df_city[col]),
         size_max=20,
-        scope="usa",  # Set scope to USA specifically
+        scope="usa",
         hover_name="Postal Code",
         hover_data={"latitude": False, "longitude": False, "City": True, "State": True, col: ':.1f'},
-        title=f"{aggr} {col} by Location ($)",
-        #color_continuous_scale="RdYlBu_r",
+        title=f"{agg} {col} by Location ($)",
         color_continuous_scale=px.colors.sequential.Viridis,
     )
 
@@ -264,7 +282,6 @@ def plot_city_map(df, col, aggr):
         width=1200
     )
 
-   # fig.show()
     return fig
 
 st.sidebar.header("3) Aggregate & visualize")

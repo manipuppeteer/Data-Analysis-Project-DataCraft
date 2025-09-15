@@ -1,0 +1,8 @@
+pandas
+matplotlib
+plotly
+seaborn
+numpy
+chart-studio
+notebook
+ipykernel

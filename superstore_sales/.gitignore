@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Environment variables and secrets
+.env
+config.py
+credentials.py
+
+# VS Code settings
+.vscode/
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# HTML outputs from plotly
+*.html

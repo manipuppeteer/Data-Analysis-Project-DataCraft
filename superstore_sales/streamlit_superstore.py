@@ -206,27 +206,7 @@ def plot_choropleth_map(df, col, agg):
         width=1200
     )
 
-    # # Save locally
-    # local_filename = f"choropleth_map_{col.replace(' ', '_').lower()}.html"
-    # fig.write_html(local_filename)
     
-    # try:
-    #     # Set up Chart Studio credentials
-    #     tools.set_credentials_file(username='manipuppeteer', api_key='2gBBLjnre4aKY0G5kZwd')
-        
-    #     # Create a unique filename for Chart Studio based on the metric
-    #     chart_studio_filename = f'choropleth_{col.replace(" ", "_").lower()}_by_state'
-        
-    #     # Upload to Chart Studio with unique filename
-    #     # plot_url = py.plot(fig, filename=chart_studio_filename, sharing='public')
-    #     # print(f'Your shareable {col} plot URL:', plot_url)
-        
-    # except Exception as e:
-    #     print(f'Error uploading to Chart Studio: {str(e)}')
-    #     print(f'Plot has been saved locally as {local_filename}')
-
-    # Show the plot
-   # fig.show()
 
     # Print any states that didn't get mapped (for debugging)
     unmapped_states = df_state[df_state['State_Code'].isna()]['State'].tolist()
